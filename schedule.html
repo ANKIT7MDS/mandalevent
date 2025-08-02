@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Schedule</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Schedule</h1>
+    <div class="nav"><a href="./index.html">Home</a></div>
+    <form id="scheduleForm" class="card grid">
+      <div class="grid grid-2">
+        <div>
+          <label>Event</label>
+          <select id="event"></select>
+        </div>
+        <div>
+          <label>Mandal</label>
+          <select id="mandal"></select>
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <div>
+          <label>Date</label>
+          <input type="date" id="date" required />
+        </div>
+        <div>
+          <label>Time</label>
+          <input type="time" id="time" required />
+        </div>
+      </div>
+      <div>
+        <label>Venue/Address</label>
+        <input id="venue" required />
+      </div>
+      <button type="submit">Submit</button>
+      <div id="msg"></div>
+    </form>
+  </div>
+  <script type="module">
+    import { loadOptions, createDoc, toISODate } from './shared.js';
+    await loadOptions(document.getElementById('event'), 'events', 'id', 'name');
+    await loadOptions(document.getElementById('mandal'), 'mandals', 'id', 'name');
+
+    const form = document.getElementById('scheduleForm');
+    const msg = document.getElementById('msg');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = 'Submitting...';
+      try {
+        const dateISO = toISODate(document.getElementById('date').value);
+        const payload = {
+          eventId: document.getElementById('event').value,
+          mandalId: document.getElementById('mandal').value,
+          dateISO,
+          time: document.getElementById('time').value,
+          venue: document.getElementById('venue').value.trim()
+        };
+        if (!payload.eventId || !payload.mandalId) throw new Error('Please select Event and Mandal');
+        await createDoc('schedules', payload);
+        msg.textContent = 'Saved!';
+        msg.className = 'success';
+        form.reset();
+      } catch (err) {
+        msg.textContent = err.message || 'Error';
+        msg.className = 'error';
+      }
+    });
+  </script>
+</body>
+</html>

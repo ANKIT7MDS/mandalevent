@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSV Importer</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>CSV Importer</h1>
+    <div class="nav"><a href="./index.html">Home</a></div>
+    <div class="card grid">
+      <div class="grid grid-2">
+        <div>
+          <label>Collection</label>
+          <select id="collection">
+            <option value="events">events</option>
+            <option value="mandals">mandals</option>
+            <option value="assignments">assignments</option>
+            <option value="schedules">schedules</option>
+            <option value="reports">reports</option>
+          </select>
+        </div>
+        <div>
+          <label>CSV File</label>
+          <input type="file" id="csv" accept=".csv" />
+        </div>
+      </div>
+      <button id="importBtn">Import</button>
+      <div id="msg"></div>
+      <small class="muted">First row must be headers. Each row becomes a Firestore document with those fields.</small>
+    </div>
+  </div>
+  <script type="module">
+    import { createDoc } from './shared.js';
+
+    const btn = document.getElementById('importBtn');
+    const msg = document.getElementById('msg');
+
+    btn.addEventListener('click', async () => {
+      msg.textContent = 'Parsing CSV...';
+      const file = document.getElementById('csv').files?.[0];
+      const collection = document.getElementById('collection').value;
+      if (!file) { msg.textContent = 'Please choose a CSV file.'; return; }
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async function(results) {
+          const rows = results.data;
+          msg.textContent = `Parsed ${rows.length} rows. Importing...`;
+          let ok = 0, fail = 0;
+          for (const row of rows) {
+            try {
+              // Empty strings → undefined
+              for (const k of Object.keys(row)) {
+                if (row[k] === '') delete row[k];
+                if (k.toLowerCase().includes('attendance')) row[k] = Number(row[k] || 0);
+                if (k.toLowerCase().includes('active')) row[k] = (String(row[k]).toLowerCase() === 'true' || row[k] === '1');
+              }
+              await createDoc(collection, row);
+              ok++;
+            } catch (e) {
+              fail++;
+              console.error(e);
+            }
+          }
+          msg.textContent = `Done. Success: ${ok}, Failed: ${fail}`;
+        },
+        error: function(err) {
+          msg.textContent = 'Parse error: ' + err.message;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
